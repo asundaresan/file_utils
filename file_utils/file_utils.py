@@ -53,11 +53,12 @@ def get_pickle_file( base_folder ):
 
 
 
-def hashfile_folder( root_folder, force_pickle = False, delete = False, verbose = 0 ):
-  """ Get SHA256 of all files in the folder 
+def hashfile_folder( root_folder, force_pickle = False, verbose = 0 ):
+  """ Get all folders in root_folder and hashes of files in all folders
+      Hash is SHA256 
   """
   root_folder = os.path.abspath( root_folder )
-  allfiles = dict()
+  allfolders = dict()
   uniquefiles = dict()
   for base_folder, sub_folder, file_list in os.walk(root_folder):
     data = dict()
@@ -66,38 +67,113 @@ def hashfile_folder( root_folder, force_pickle = False, delete = False, verbose 
       print( "%s <- %s" % ( base_folder, pfile ) )
       with open(pfile, 'rb') as handle:
         data = pickle.load(handle) 
+      if verbose > 1:
+        for k, v in data.iteritems():
+          print( "  %s: %s" % ( k, base64.b64encode( v ).decode("utf-8") ) )
     else:
       for f in file_list:
         filename = os.path.join( base_folder, f )
         fhash = hash_file( filename )
         data[filename] = fhash
-        print( "  %s: %s" % ( f, base64.b64encode( fhash ).decode("utf-8") ) )
+        if verbose > 1:
+          print( "  %s: %s" % ( f, base64.b64encode( fhash ).decode("utf-8") ) )
       print( "%s -> %s" % ( base_folder, pfile ) )
       with open(pfile, 'wb') as handle:
         pickle.dump(data, handle)
-    allfiles.update( data )
-    updated_folders = set()
-    for (k,v) in data.items():
-      unique = True
-      for (k2,v2) in uniquefiles.items():
-        if v == v2:
-          dupes = (k,k2) if k > k2 else (k2,k)
-          to_keep = dupes[0]
-          to_delete = dupes[1]
-          print( "remove %s (keep: %s)" % ( to_delete, to_keep ) )
-          unique = False
-          if delete:
-            move_file_to_trash( to_delete )
-            updated_folders.add( os.path.dirname( to_delete ) )
-          break
-      if unique:
-        uniquefiles[k] = v
+    allfolders[base_folder] = data
+  return allfolders
 
-  """ Remove pickle files of updated folders
-  """ 
-  for f in updated_folders:
-    pfile = get_pickle_file( f )
-    if os.path.exists( pfile ):
-      print( "Removing pickle file: %s" % pfile )
-      os.remove( pfile )
+
+
+def find_duplicates( target_folder, force_pickle = False, verbose = 0 ):
+  """ Get SHA256 of all files in the folder 
+      XXX test
+      XXX TODO do cross folder check
+  """
+  target_dict = hashfile_folder( target_folder, force_pickle = force_pickle, verbose = verbose )
+  for folder, data in target_dict.iteritems():
+    hashset = set()
+    dupes = list()
+    for (k,v) in data.items():
+      if v in hashset:
+        dupes.add( k )
+      else:
+        hashset.add( v )
+    if len( dupes ) > 0:
+      print( "Removed %d dupes from %s" % ( len( dupes ), folder ) )
+    for k in dupes:
+      target_dict[folder].pop( k )
+  # look for dupes in other folders
+  hashset_dict = dict()
+  for f1, d1 in target_dict.iteritems():
+    hashset_dict[f1] = set( d1.values() )
+    if verbose > 1:
+      print( "Getting hashset for %s: %d" % ( f1, len( d1 ) ) )
+
+  allfolders = set( target_dict.keys() )
+  for f1, s1 in hashset_dict.iteritems():
+    allfolders.remove( f1 )
+    if verbose > 1:
+      print( "Comparing %s: %d" % ( f1, len( s1 ) ) )
+    for f2 in allfolders:
+      s2 = hashset_dict[f2]
+      if verbose > 1:
+        print( "  with %s: %d" % ( f2, len( s2 ) ) )
+      dupes = s1.intersection( s2 )
+      n_dupes = len( dupes )
+      if n_dupes > 0 or verbose > 0:
+        print( "  %d files in %s are also in %s" % ( n_dupes, f1, f2 ) )
+
+
+#def delete_duplicates( root_folder, force_pickle = False, verbose = 0 ):
+#  """ Get SHA256 of all files in the folder 
+#      XXX test
+#      XXX TODO do cross folder check
+#  """
+#  target_dict = hashfile_folder( target_folder, force_pickle = force_pickle, verbose = verbose )
+#  updated_folders = set()
+#  for folder, data in target_dict.iteritems():
+#    unique = dict()
+#    for (k,v) in data.items():
+#      is_unique = True
+#      for (k2,v2) in unique.items():
+#        if v == v2:
+#          is_unique = False
+#          if delete:
+#            dupes = (k,k2) if k > k2 else (k2,k)
+#            to_keep = dupes[0]
+#            to_delete = dupes[1]
+#            print( "remove %s (keep: %s)" % ( to_delete, to_keep ) )
+#            move_file_to_trash( to_delete )
+#            updated_folders.add( os.path.dirname( to_delete ) )
+#          break
+#      if is_unique:
+#        unique[k] = v
+#
+#  """ Remove pickle files of updated folders
+#  """ 
+#  for f in updated_folders:
+#    pfile = get_pickle_file( f )
+#    if os.path.exists( pfile ):
+#      print( "Removing pickle file: %s" % pfile )
+#      os.remove( pfile )
+#
+
+
+def not_in( target_folder, reference_folder, force_pickle = False, verbose = 0 ):
+  """ Look for files in target_folder that are not in reference_folder
+  """
+  reference_dict = hashfile_folder( reference_folder, force_pickle = force_pickle, verbose = verbose )
+  reference_set = set()
+  for r in reference_dict.keys():
+    reference_set.update( set( reference_dict[r].values() ) )
+  target_dict = hashfile_folder( target_folder, force_pickle = force_pickle, verbose = verbose )
+  not_in_folder = dict()
+  for t in target_dict.keys():
+    not_in_folder[t] = list()
+    for f,h in target_dict[t].iteritems():
+      if h not in reference_set:
+        not_in_folder[t].append( f )
+    not_found = len( not_in_folder[t] )
+    print( "%3d files in %s not found in reference" % ( not_found, t ) )
 

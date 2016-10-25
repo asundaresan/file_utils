@@ -1,1 +1,1 @@
-from .file_utils import hashfile_folder
+from .file_utils import find_duplicates, not_in
