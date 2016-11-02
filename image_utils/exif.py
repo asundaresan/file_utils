@@ -29,10 +29,12 @@ if __name__ == "__main__":
   parser.add_argument( "--verbose", "-v", action="count", help="Verbosity level" )
   parser.add_argument( "--increment", "-i", type = str, default = "",
     help="Increment timestamp as a CSV (E.g. 5d,7h is 5 days and 7 hours)" )
+  parser.add_argument( "--decrement", "-d", type = str, default = "",
+    help="Decrement timestamp as a CSV " )
   args = parser.parse_args()
 
-  if args.increment != None:
-    delta = get_timedelta( args.increment )
+  if args.increment != None or args.decrement != None:
+    delta = get_timedelta( args.increment ) - get_timedelta( args.decrement )
     for f in args.images:
       set_date_offset( f, delta )
 
