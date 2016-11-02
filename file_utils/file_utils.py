@@ -169,5 +169,5 @@ def not_in( target_folder, reference_folder, force_pickle = False, verbose = 0 )
     not_found = len( not_in_folder[t] )
     total = len( target_dict[t] )
     if not_found > 0:
-      print( "%3d / %3d files in %s not found in reference" % ( not_found, t ) )
+      print( "%3d / %3d files in %s not found in reference" % ( not_found, total, t ) )
 
