@@ -21,3 +21,10 @@ python bin/check_duplicates.py folder_a
 python bin/check_duplicates.py folder_a --not-in folder_b
 ```
 
+- Modify date time metadata in files 
+You can check to see the date-time, increment or decrement date-time metadata in the image files.
+```
+python bin/set_time.py <files>
+python bin/set_time.py -i 365d <files>
+python bin/set_time.py -d 15h <files>
+```

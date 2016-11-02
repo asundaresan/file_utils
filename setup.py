@@ -3,7 +3,7 @@
 from setuptools import setup, find_packages
 
 setup(name='file_utils',
-      version='0.1.1',
+      version='0.1.2',
       description='Python file utilities',
       url='http://github.com/asundaresan/file_utils',
       author='Aravind Sundaresan',
@@ -12,7 +12,8 @@ setup(name='file_utils',
       packages=['file_utils'],
       scripts=[
         "bin/check_duplicates.py",
-        "bin/filter_images.py"
+        "bin/filter_images.py",
+        "bin/set_time.py",
         ],
       zip_safe=False
       )
