@@ -11,8 +11,9 @@ if __name__ == "__main__":
     parser.add_argument( "--verbose", "-v", action="count", default = 0, help="Verbosity level" )
     parser.add_argument( "--not-in", "-N", type=str, default = None, help="Find files not in this folder" )
     args = parser.parse_args()
+    print( "verbosity = %d" % args.verbose )
     if args.not_in != None:
-      print( "Looking for files in %s that are not in %s" % ( args.not_in, args.target ) )
+      print( "Looking for files in %s that are not in %s" % ( args.target, args.not_in ) )
       file_utils.not_in( args.target, args.not_in, verbose = args.verbose )
     else:
       print( "Searching for duplicates in %s, verbose = %d" % ( args.target, args.verbose ) )
