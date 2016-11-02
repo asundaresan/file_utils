@@ -52,8 +52,17 @@ def get_pickle_file( base_folder ):
   return os.path.join( pfolder, digestfile )
 
 
+def filter_files( file_list, ends_with ):
+  file_list2 = list()
+  for f in file_list:
+    valid = list( f.lower().endswith( suffix for suffix in ends_with ) )
+    if True in valid:
+      file_list2.append( f )
 
-def hashfile_folder( root_folder, force_pickle = False, verbose = 0 ):
+
+
+def hashfile_folder( root_folder, force_pickle = False, verbose = 0,
+        ends_with = [".jpg",".jpeg", ".mov", ".mp4"]):
   """ Get all folders in root_folder and hashes of files in all folders
       Hash is SHA256 
   """
@@ -63,20 +72,30 @@ def hashfile_folder( root_folder, force_pickle = False, verbose = 0 ):
   for base_folder, sub_folder, file_list in os.walk(root_folder):
     data = dict()
     pfile = get_pickle_file( base_folder )
+    pickle_folder = True
+    file_list2 = filter_files( file_list, ends_with )
     if os.path.exists( pfile ) and not force_pickle:
       print( "%s <- %s" % ( base_folder, pfile ) )
       with open(pfile, 'rb') as handle:
         data = pickle.load(handle) 
+      # if files are different, then re-pickle
+      if set( data.keys() ) != set( file_list2 ):
+        pickle_folder = True
+        if verbose > 1:
+          print( "re-pickling %s" % base_folder )
       if verbose > 1:
         for k, v in data.iteritems():
           print( "  %s: %s" % ( k, base64.b64encode( v ).decode("utf-8") ) )
-    else:
-      for f in file_list:
-        filename = os.path.join( base_folder, f )
-        fhash = hash_file( filename )
-        data[filename] = fhash
-        if verbose > 1:
-          print( "  %s: %s" % ( f, base64.b64encode( fhash ).decode("utf-8") ) )
+
+    if pickle_folder:
+      for f in file_list2:
+        valid = list( f.lower().endswith( suffix for suffix in ends_with ) )
+        if True in valid:
+          filename = os.path.join( base_folder, f )
+          fhash = hash_file( filename )
+          data[filename] = fhash
+          if verbose > 1:
+            print( "  %s: %s" % ( f, base64.b64encode( fhash ).decode("utf-8") ) )
       print( "%s -> %s" % ( base_folder, pfile ) )
       with open(pfile, 'wb') as handle:
         pickle.dump(data, handle)
