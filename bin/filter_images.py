@@ -2,7 +2,6 @@
 
 import sys
 import argparse
-from file_utils import image_utils
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
