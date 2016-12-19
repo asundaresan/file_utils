@@ -1,0 +1,22 @@
+# iPhone 4S
+iphone4s_video:
+  "File Type": "MOV"
+  "Model": "iPhone 4S"
+  "Image Size": "1920x1080"
+iphone4s_image:
+  "File Type": "JPEG"
+  "Model": "iPhone 4S"
+  "Image Size": "3264x2448"
+# iPhone 6
+iphone6_video:
+  "File Type": "MOV"
+  "Model": "iPhone 6"
+  "Image Size": "1920x1080"
+iphone6_video_front:
+  "File Type": "MOV"
+  "Model": "iPhone 6"
+  "Image Size": "1280x720"
+iphone6_image:
+  "File Type": "JPEG"
+  "Model": "iPhone 6"
+  "Image Size": "3264x2448"

@@ -7,6 +7,8 @@ import os
 import pickle
 import base64
 import subprocess
+import json 
+import yaml
 
 def run_command( command ):
   p = subprocess.Popen( command,
@@ -15,83 +17,128 @@ def run_command( command ):
   return iter(p.stdout.readline, b'')
 
 
-def get_video_info( filename, keys = ["Model", "Make", "Size"], verbose = 0 ):
-  if verbose > 0:
+#def get_video_info_ffmpeg( filename, keys = ["Model", "Make", "Size"], verbose = 0 ):
+#  if verbose > 0:
+#    print( "processing %s" % filename )
+#  outputfile = "/tmp/metadata.txt"
+#  if os.path.exists( outputfile ):
+#    os.remove( outputfile )
+#  cmd = "ffmpeg -i %s -f ffmetadata %s" % ( filename, outputfile )
+#  exif = {}
+#  for line in run_command( cmd.split() ):
+#    if ":" in line:
+#      v = line.split( ":" )
+#      key = v[0].strip()
+#      val = v[1].strip()
+#      if key.startswith( "Stream #0" ) and val.startswith( "0(und)" ):
+#        if len( v ) == 4: 
+#          v2 = v[3].split( ", " )
+#          if len( v2 ) >= 4:
+#            key = "size-eng" 
+#            val = v2[3]
+#
+#      for k in keys:
+#        if key.startswith( k.lower() ) and key.endswith( "-eng" ):
+#          exif[k] = val
+#          if verbose > 1:
+#            print( "%s:%s (%s:%s)" % ( key, val, v[0].strip(), v[1].strip() ) )
+#  if verbose > 0:
+#    print( "  exif: %s" % exif )
+#  return exif
+#
+
+def get_video_metadata( filename, verbose = 0 ):
+  """ Get meta-data by parsing exiftool (from libimage-exiftool-perl)
+  """
+  if verbose > 1:
     print( "processing %s" % filename )
-  outputfile = "/tmp/metadata.txt"
-  if os.path.exists( outputfile ):
-    os.remove( outputfile )
-  cmd = "ffmpeg -i %s -f ffmetadata %s" % ( filename, outputfile )
+  cmd = "exiftool %s" % filename
+
   exif = {}
   for line in run_command( cmd.split() ):
     if ":" in line:
-      v = line.split( ":" )
-      key = v[0].strip()
-      val = v[1].strip()
-      if key.startswith( "Stream #0" ) and val.startswith( "0(und)" ):
-        if len( v ) == 4: 
-          v2 = v[3].split( ", " )
-          if len( v2 ) >= 4:
-            key = "size-eng" 
-            val = v2[3]
-
-      for k in keys:
-        if key.startswith( k.lower() ) and key.endswith( "-eng" ):
-          exif[k] = val
-          if verbose > 1:
-            print( "%s:%s (%s:%s)" % ( key, val, v[0].strip(), v[1].strip() ) )
-  if verbose > 0:
-    print( "  exif: %s" % exif )
+      data = line.split( ":" )
+      key = data[0].strip()
+      val = data[1].strip()
+      exif.update( { key: val } )
   return exif
+  exif2 = { k: v for k, v in exif.iteritems() if k in keys }
+  if verbose > 2:
+    print( "\n".join( "  %s:%s" % (k,v) for k, v in exif.iteritems() ) )
+  return exif2
+
+
+
+def translate( exif, keymap ):
+  for k, v in keymap.iteritems():
+    #print( "  translating %s -> %s: %s" % ( k, v, k in exif.keys() ) )
+    if k in exif.keys() and v not in exif.keys():
+      exif[v] = exif[k]
+      #print( "    %s: %s" % ( v, exif[v] ) )
+  return exif
+
 
 
 def get_metadata( filename, koi, verbose = 0, video_extensions = ["MOV"], image_extensions = ["JPG", "JPEG"] ):
-  name, extension = os.path.splitext( filename )
-  filetype = extension.upper().lstrip( "." )
-  exif = {}
-  if filetype in video_extensions:
-    exif = get_video_info( filename, koi, verbose = verbose )
-  elif filetype in image_extensions:
-    exif = get_image_info( filename, koi, verbose = verbose )
-  
-  exif.update( {"Type": filetype } )
-  return exif
+  exif = get_video_metadata( filename, verbose = verbose )
+  keymap = {"Camera Model Name": "Model"}
+  exif2 = translate( exif, keymap )
+  exif3 = { k:v for k,v in exif2.iteritems() if k in koi }
+  if verbose > 1:
+    print( "\n".join( "  %s:%s" % (k,v) for k, v in exif3.iteritems() ) )
+  return exif3
 
 
-def get_image_info( filename, koi, verbose = 0 ):
-  try:
-    im = ImageFile.Image.open( filename )
-  except:
-    return {}
-  try:
-    exif = { ExifTags.TAGS[k]: v for k, v in im._getexif().items() if k in ExifTags.TAGS }
-  except:
-    exif = {}
-  size = list( im.size )
-  size.sort
-  exif["Size"] = "x".join( "%d" % x for x in size )
-  exif.update( { k:"" for k in koi if k not in exif.keys() } )
-  if len( koi ) > 0:
-    exif2 = { k:exif[k] for k in koi if k in exif.keys() }
-    return exif2
-  return exif
+
+#def get_metadata( filename, koi, verbose = 0, video_extensions = ["MOV"], image_extensions = ["JPG", "JPEG"] ):
+#  name, extension = os.path.splitext( filename )
+#  filetype = extension.upper().lstrip( "." )
+#  exif = {}
+#  if filetype in video_extensions:
+#    exif = get_video_metadata( filename, koi, verbose = verbose )
+#  elif filetype in image_extensions:
+#    exif = get_image_info( filename, koi, verbose = verbose )
+#  
+#  exif.update( {"Type": filetype } )
+#  return exif
+#
+#
+#def get_image_info( filename, koi, verbose = 0 ):
+#  try:
+#    im = ImageFile.Image.open( filename )
+#  except:
+#    return {}
+#  try:
+#    exif = { ExifTags.TAGS[k]: v for k, v in im._getexif().items() if k in ExifTags.TAGS }
+#  except:
+#    exif = {}
+#  size = list( im.size )
+#  size.sort
+#  exif["Size"] = "x".join( "%d" % x for x in size )
+#  exif.update( { k:"" for k in koi if k not in exif.keys() } )
+#  if len( koi ) > 0:
+#    exif2 = { k:exif[k] for k in koi if k in exif.keys() }
+#    return exif2
+#  return exif
 
 
-def is_match( reference, target, verbose = 0 ):
-  """ reference is a list of dicts
-      target is a dict
-      return True if target matches all items in any one of the reference 
+
+def is_match( exif_list, exif, verbose = 0 ):
+  """ exif_list is a list of dicts (exifs)
+      exif is a dict (exif )
+      return True if exif matches all (key, value) pairs in any one item in exif_list 
   """
-  for ref in reference:
-    checks = list( ref[k] == target[k] for k in ref.keys() if k in target.keys() )
+  for e in exif_list:
+    checks = list( e[k] == exif[k] if k in exif.keys() else False for k in e.keys() )
     if verbose > 1:
-      print( "%s == %s: %s %s" % ( exif_to_string( target ), exif_to_string( ref ), all( checks ), checks ) )
+      print( "%s == %s: %s %s" % ( json.dumps( exif ), json.dumps( e ), all( checks ), checks ) )
     if all( checks ):
       return True 
   return False
 
 
-def exif_to_string( exif, keys = ["Type", "Make", "Model", "Size"] ):
+
+def exif_to_string( exif, keys = ["File Type", "Make", "Model", "Image Size"] ):
   keystr = "_".join( exif[k] for k in keys if k in exif.keys() )
   return keystr.replace( " ", "" )
 
@@ -114,12 +161,12 @@ def move_to_subfolder( files, subfolder, verbose = 0 ):
         print( "%s -> %s" % ( src, dst ) )
 
 
-def process_folder( root_folder, koi = ["Make", "Model", "Size" ], include = [], move = False, move_complement = False, recurse = False, verbose = 0 ):
+def process_folder( root_folder, select = [], move = False, move_complement = False, recurse = False, verbose = 0 ):
   """ Get info of all image files in the folder 
   """
+  koi = ["Make", "Model", "Image Size", "File Type" ]
   root_folder = os.path.abspath( root_folder )
   db = dict()
-  ignored = 0
   found = 0
   for f in os.listdir( root_folder ):
     filename = os.path.join( root_folder, f )
@@ -127,28 +174,29 @@ def process_folder( root_folder, koi = ["Make", "Model", "Size" ], include = [],
       exif = get_metadata( filename, koi, verbose = verbose )
       if len( exif.keys() ) > 0:
         found += 1
-        k2 = exif_to_string( exif )
-        if not k2 in db.keys():
-          db[k2] = { "exif": exif, "files": list() }
-        db[k2]["files"].append( filename )
+        key = json.dumps( exif )
+        if not key in db.keys():
+          db[key] = { "exif": exif, "files": list() }
+        db[key]["files"].append( filename )
       else:
-        ignored += 1
-        if verbose > 0:
+        if verbose > 1:
           print( "Ignoring %s" % filename )
+  empty = json.dumps( {} )
+  ignored = 0 if empty not in db.keys() else len( db[empty]["files"] )
   print( "Found %d files, ignored %d (%d classes)" % ( found, ignored, len( db ) ) )
 
   for key, val in db.iteritems():
-    selected = is_match( include, val["exif"] )
+    selected = is_match( select, val["exif"] )
     if selected:
       if move:
-        subfolder = key
-        move_to_subfolder( val["files"], key, verbose )
+        subfolder = exif_to_string( val["exif"] )
+        move_to_subfolder( val["files"], subfolder, verbose )
         print( "* %s (%d files -> %s)" % ( key, len( val["files"] ), subfolder ) )
-      elif move_complement:
+      if move_complement:
         subfolder = "complement"
         move_to_subfolder( val["files"], subfolder, verbose )
         print( "* %s (%d files -> %s)" % ( key, len( val["files"] ), subfolder ) )
-      else:
+      if not move or not move_complement:
         print( "* %s (%d files)" % ( key, len( val["files"] ) ) )
     else:
       if verbose > 0:
@@ -163,16 +211,20 @@ if __name__ == "__main__":
     parser.add_argument( "folder", help="Search folder" )
     parser.add_argument( "--repickle", "-R", action="store_true", help="Force rewrite of pickle files" )
     parser.add_argument( "--verbose", "-v", action="count", help="Verbosity level" )
+    parser.add_argument( "--source", "-s", default = "sources.yaml", help="Move selected files to folder" )
     parser.add_argument( "--move", "-m", action="store_true", help="Move selected files to folder" )
     parser.add_argument( "--move-complement", "-c", action="store_true", help="Move complement of selected files to folder" )
     args = parser.parse_args()
     print( "Searching for files in: %s" % args.folder )
-    include = []
-    for model in ["iPhone 4S", "iPhone 6"]:
-      #include.append( {"Type": "MOV", "Model": model, "Size": "1920x1080" } )
-      #include.append( {"Type": "JPG", "Model": model, "Size": "3264x2448"} )
-      #include.append( {"Type": "MOV", "Model": model, "Size": "1920x1080" } )
-      include.append( { "Type": "MOV", "Model": model } )
-      include.append( { "Type": "JPG", "Model": model } )
-    process_folder( args.folder, include = include, move = args.move,
+    
+    select = {}
+    try:
+      with open( args.source, "r" ) as f:
+        select = yaml.load( f )
+      print( "Loaded sources from %s" % args.source )
+      print( "\n".join( "- %s: %s" % ( k, json.dumps( v ) ) for k, v in select.iteritems() ) )
+    except:
+      print( "Failed to load sources from %s: %s" % ( args.source ) )
+
+    process_folder( args.folder, select = select.values(), move = args.move,
         move_complement = args.move_complement, verbose = args.verbose )
