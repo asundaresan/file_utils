@@ -167,7 +167,12 @@ if __name__ == "__main__":
     parser.add_argument( "--move-complement", "-c", action="store_true", help="Move complement of selected files to folder" )
     args = parser.parse_args()
     print( "Searching for files in: %s" % args.folder )
-    include = [ {"Type": "MOV", "Model": "iPhone 4S", "Size": "1920x1080" } ]
-    #include = [ {"Type": "JPG", "Model": "iPhone 4S", "Size": "3264x2448"} ]
+    include = []
+    for model in ["iPhone 4S", "iPhone 6"]:
+      #include.append( {"Type": "MOV", "Model": model, "Size": "1920x1080" } )
+      #include.append( {"Type": "JPG", "Model": model, "Size": "3264x2448"} )
+      #include.append( {"Type": "MOV", "Model": model, "Size": "1920x1080" } )
+      include.append( { "Type": "MOV", "Model": model } )
+      include.append( { "Type": "JPG", "Model": model } )
     process_folder( args.folder, include = include, move = args.move,
         move_complement = args.move_complement, verbose = args.verbose )
