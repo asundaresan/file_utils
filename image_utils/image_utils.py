@@ -50,7 +50,7 @@ def run_command( command ):
 def get_video_metadata( filename, verbose = 0 ):
   """ Get meta-data by parsing exiftool (from libimage-exiftool-perl)
   """
-  if verbose > 1:
+  if verbose > 2:
     print( "processing %s" % filename )
   cmd = "exiftool %s" % filename
 
@@ -62,10 +62,6 @@ def get_video_metadata( filename, verbose = 0 ):
       val = data[1].strip()
       exif.update( { key: val } )
   return exif
-  exif2 = { k: v for k, v in exif.iteritems() if k in keys }
-  if verbose > 2:
-    print( "\n".join( "  %s:%s" % (k,v) for k, v in exif.iteritems() ) )
-  return exif2
 
 
 
@@ -84,7 +80,7 @@ def get_metadata( filename, koi, verbose = 0, video_extensions = ["MOV"], image_
   keymap = {"Camera Model Name": "Model"}
   exif2 = translate( exif, keymap )
   exif3 = { k:v for k,v in exif2.iteritems() if k in koi }
-  if verbose > 1:
+  if verbose > 2:
     print( "\n".join( "  %s:%s" % (k,v) for k, v in exif3.iteritems() ) )
   return exif3
 
@@ -131,7 +127,7 @@ def is_match( exif_list, exif, verbose = 0 ):
   exif_keys = [k.lower() for k in exif.keys()]
   for e in exif_list:
     checks = list( e[k].lower() == exif[k].lower() if k.lower() in exif_keys else False for k in e.keys() )
-    if verbose > 1:
+    if verbose > 2:
       print( "%s == %s: %s %s" % ( json.dumps( exif ), json.dumps( e ), all( checks ), checks ) )
     if all( checks ):
       return True 
@@ -149,7 +145,8 @@ def move_to_subfolder( files, subfolder, verbose = 0 ):
   """ Copy files to subfolder in their respective folders,
       i.e. f is copied to dirname( f )/subfolder/basename( f )
   """
-  print( "Moving %d files to %s" % ( len( files ), subfolder ) )
+  if verbose > 1:
+    print( "Moving %d files to %s" % ( len( files ), subfolder ) )
   for src in files:
     folder = "%s/%s" % ( os.path.dirname( src ), subfolder )
     dst = "%s/%s" % ( folder, os.path.basename( src ) )
@@ -158,7 +155,7 @@ def move_to_subfolder( files, subfolder, verbose = 0 ):
       os.makedirs( folder )
     if os.path.exists( src ) and not os.path.exists( dst ):
       os.rename( src, dst )
-      if verbose > 0:
+      if verbose > 1:
         print( "%s -> %s" % ( src, dst ) )
 
 
@@ -209,6 +206,8 @@ def process_folder( root_folder, select = [], move = False, move_complement = Fa
       else:
         if verbose > 0:
           print( "  %s (%d files)" % ( key, len( files ) ) )
+          if verbose > 1:
+            print( "\n".join( "    %s" % os.path.basename( f ) for f in files ) )
 
   print( "  Other (%d categories, %d files)\n--" % ( ns_categories, ns_files ) )
 

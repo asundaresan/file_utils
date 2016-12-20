@@ -34,6 +34,14 @@ iphone6_image:
   "File Type": "JPEG"
   "Model": "iPhone 6"
   "Image Size": "3264x2448"
+iphone6_image_square:
+  "File Type": "JPEG"
+  "Model": "iPhone 6"
+  "Image Size": "2448x2448"
+iphone6_image_front:
+  "File Type": "JPEG"
+  "Model": "iPhone 6"
+  "Image Size": "1280x960"
 # Samsung Galaxy SII Skyrocket
 galaxy_s2_video:
   "Image Size": "1920x1080"
