@@ -128,8 +128,9 @@ def is_match( exif_list, exif, verbose = 0 ):
       exif is a dict (exif )
       return True if exif matches all (key, value) pairs in any one item in exif_list 
   """
+  exif_keys = [k.lower() for k in exif.keys()]
   for e in exif_list:
-    checks = list( e[k] == exif[k] if k in exif.keys() else False for k in e.keys() )
+    checks = list( e[k].lower() == exif[k].lower() if k.lower() in exif_keys else False for k in e.keys() )
     if verbose > 1:
       print( "%s == %s: %s %s" % ( json.dumps( exif ), json.dumps( e ), all( checks ), checks ) )
     if all( checks ):
@@ -185,23 +186,31 @@ def process_folder( root_folder, select = [], move = False, move_complement = Fa
   ignored = 0 if empty not in db.keys() else len( db[empty]["files"] )
   print( "Found %d files, ignored %d (%d classes)" % ( found, ignored, len( db ) ) )
 
+  ns_files = 0
+  ns_categories = 0
   for key, val in db.iteritems():
-    selected = is_match( select, val["exif"] )
+    exif = val["exif"]
+    files = val["files"]
+    selected = is_match( select, exif )
     if selected:
       if move:
-        subfolder = exif_to_string( val["exif"] )
-        move_to_subfolder( val["files"], subfolder, verbose )
-        print( "* %s (%d files -> %s)" % ( key, len( val["files"] ), subfolder ) )
+        subfolder = exif_to_string( exif )
+        move_to_subfolder( files, subfolder, verbose )
+        print( "m %s (%d files -> %s)" % ( key, len( files ), subfolder ) )
+      else:
+        print( "* %s (%d files)" % ( key, len( files ) ) )
+    else:
+      ns_files += len( files )
+      ns_categories += 1
       if move_complement:
         subfolder = "complement"
-        move_to_subfolder( val["files"], subfolder, verbose )
-        print( "* %s (%d files -> %s)" % ( key, len( val["files"] ), subfolder ) )
-      if not move or not move_complement:
-        print( "* %s (%d files)" % ( key, len( val["files"] ) ) )
-    else:
-      if verbose > 0:
-        print( "  %s" % key )
+        move_to_subfolder( files, subfolder, verbose )
+        print( "c %s (%d files -> %s)" % ( key, len( files ), subfolder ) )
+      else:
+        if verbose > 0:
+          print( "  %s (%d files)" % ( key, len( files ) ) )
 
+  print( "  Other (%d categories, %d files)\n--" % ( ns_categories, ns_files ) )
 
 import sys
 import argparse
@@ -221,10 +230,13 @@ if __name__ == "__main__":
     try:
       with open( args.source, "r" ) as f:
         select = yaml.load( f )
-      print( "Loaded sources from %s" % args.source )
-      print( "\n".join( "- %s: %s" % ( k, json.dumps( v ) ) for k, v in select.iteritems() ) )
     except:
       print( "Failed to load sources from %s: %s" % ( args.source ) )
+    else:
+      print( "Loaded sources from %s (%d types)" % ( args.source, len( select ) ) )
+      if args.verbose > 0:
+        print( "\n".join( "- %s: %s" % ( k, json.dumps( v ) ) for k, v in select.iteritems() ) )
+
 
     process_folder( args.folder, select = select.values(), move = args.move,
         move_complement = args.move_complement, verbose = args.verbose )
