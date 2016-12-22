@@ -12,8 +12,6 @@ setup(name='file_utils',
       packages=['file_utils'],
       scripts=[
         "bin/check_duplicates.py",
-        "bin/filter_images.py",
-        "bin/set_time.py",
         ],
       zip_safe=False
       )
