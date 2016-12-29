@@ -76,11 +76,17 @@ def hashfile_folder( root_folder, force_pickle = False, verbose = 0,
       if verbose > 0:
         print( "Reading %s" % ( pfile ) )
       with open(pfile, 'rb') as handle:
-        data = pickle.load(handle) 
+        data2 = pickle.load(handle) 
       # if files are different, then re-pickle
-      if set( data.keys() ) != set( file_list2 ):
-        force_pickle_this = True
-        print( "re-pickling %s" % base_folder )
+      for f in file_list2:
+        if f not in data2.keys():
+          if verbose > 0:
+            print( "%s: %s not found in pickle file" % ( pfile, f ) )
+          print( "Repickling %s" % base_folder )
+          force_pickle_this = True
+          break
+        else:
+          data[f] = data2[f]
       if verbose > 2:
         for k, v in data.items():
           print( "  %s: %s" % ( k, base64.b64encode( v ).decode("utf-8") ) )
@@ -88,11 +94,10 @@ def hashfile_folder( root_folder, force_pickle = False, verbose = 0,
       force_pickle_this = True
 
     if force_pickle_this:
-      data = {}
       for f in file_list2:
         filename = os.path.join( base_folder, f )
         fhash = hash_file( filename )
-        data[filename] = fhash
+        data[f] = fhash
         if verbose > 2:
           print( "  %s: %s" % ( f, base64.b64encode( fhash ).decode("utf-8") ) )
       if len( data ):
@@ -113,7 +118,6 @@ def file_extension( filename ):
 
 def find_duplicates( target_folder, force_pickle = False, move = False, verbose = 0 ):
   """ Get SHA256 of all files in the folder 
-      XXX test
       XXX TODO do cross folder check
   """
   target_dict = hashfile_folder( target_folder, force_pickle = force_pickle, verbose = verbose )
@@ -133,20 +137,22 @@ def find_duplicates( target_folder, force_pickle = False, move = False, verbose 
         uniq_hash.update( { v } )
     if verbose > 0 or len( dupl ) > 0:
       print( "%d duplicates / %d total in %s" % ( len( dupl ), len( data ), folder ) )
-      print( "\n".join( "  %d of type %s" % ( v2, k2 ) for ( k2, v2 ) in stats.items() ) )
+      if len( dupl ) > 0:
+        print( "\n".join( "  %d of type %s" % ( v2, k2 ) for ( k2, v2 ) in stats.items() ) )
     if move:
       for h in dupl_hash:
         dupl_files = list( key for key, val in data.items() if val == h )
         dupl_files.sort()
-        for i, f1 in enumerate( dupl_files ):
+        for i, f in enumerate( dupl_files ):
           dupl_folder = "%s/dupe%d" % ( folder, i )
           if not os.path.exists( dupl_folder ):
             os.makedirs( dupl_folder )
-          f2 = "%s/%s" % ( dupl_folder, os.path.basename( f1 ) )
+          f1 = "%s/%s" % ( folder, f )
+          f2 = "%s/%s" % ( dupl_folder, f )
           if verbose > 1:
             print( "  %s -> %s" % ( f1, f2 ) )
           elif verbose > 0:
-            print( "  %s -> %s" % ( os.path.basename( f1 ), os.path.basename( dupl_folder ) ) )
+            print( "  %s -> %s/" % ( f, os.path.basename( dupl_folder ) ) )
           os.rename( f1, f2 )
   return 
 
@@ -191,4 +197,6 @@ def not_in( target_folder, reference_folder, force_pickle = False, verbose = 0 )
     total = len( target_dict[t] )
     if not_found > 0:
       print( "%3d / %3d files in %s not found in reference" % ( not_found, total, t ) )
+    else:
+      print( "%3d / %3d files in %s not found in reference" % ( 0, total, t ) )
 
