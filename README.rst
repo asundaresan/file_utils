@@ -22,6 +22,12 @@ To check if there are duplicates inside a folder. The check is performed recursi
 
   python bin/check_duplicates.py folder_a 
 
+To move duplicates to a subfolder named dupe?, where ? is 0-9, use::
+
+  python bin/check_duplicates.py folder_a -m 
+
+Note that if there is one duplicate of a file, then *both* files are moved to subfolders named ``dupe0`` and ``dupe1``. If there are more duplicates, then they are moved into ``dupe2``, etc. The user may move all other than either dupe0 or dupe1 into a separate new folder and check if all files in the new folder are present in the old folder, before deleting the new folder.
+
 Check if files in a folder are present in another 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
