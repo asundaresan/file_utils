@@ -120,8 +120,12 @@ def find_duplicates( target_folder, force_pickle = False, move = False, verbose 
   """ Get SHA256 of all files in the folder 
       XXX TODO do cross folder check
   """
-  target_dict = hashfile_folder( target_folder, force_pickle = force_pickle, verbose = verbose )
-  for folder, data in target_dict.items():
+  # hashdict for all folders with { filename: hash }
+  all_folders_hashdict = hashfile_folder( target_folder, force_pickle = force_pickle, verbose = verbose )
+  # hashset for all folders with { hash }
+  all_folders_hashset = dict()
+  print( "Looking for duplicates within %d folders" % len( all_folders_hashdict ) )
+  for folder, data in all_folders_hashdict.items():
     dupl = list()
     uniq_hash = set()
     dupl_hash = set()
@@ -135,6 +139,8 @@ def find_duplicates( target_folder, force_pickle = False, move = False, verbose 
         stats[extension] = stats[extension] + 1 if extension in stats.keys() else 1
       else:
         uniq_hash.update( { v } )
+    if len( uniq_hash ) > 0:
+      all_folders_hashset.update( { folder: uniq_hash } )
     if verbose > 0 or len( dupl ) > 0:
       print( "%d duplicates / %d total in %s" % ( len( dupl ), len( data ), folder ) )
       if len( dupl ) > 0:
@@ -154,28 +160,20 @@ def find_duplicates( target_folder, force_pickle = False, move = False, verbose 
           elif verbose > 0:
             print( "  %s -> %s/" % ( f, os.path.basename( dupl_folder ) ) )
           os.rename( f1, f2 )
+  # look for duplicates in other folders
+  print( "Looking for duplicates across %d folders" % len( all_folders_hashset ) )
+  proc_folders_hashset = dict()
+  for folder, hashset in all_folders_hashset.items():
+    dupl_info = list()
+    for folder2, hashset2 in proc_folders_hashset.items():
+      dupl_hashset = hashset.intersection( hashset2 )
+      if verbose > 0 or len( dupl_hashset ) > 0:
+        dupl_info.append( " %4d / %d from %s" % ( len( dupl_hashset ), len( hashset2 ), folder2 ) )
+    if len( dupl_info ): 
+      print( "%s contains (out of %d)\n%s" % ( folder, len( hashset ),  "\n".join( d for d in dupl_info ) ) )
+    proc_folders_hashset.update( { folder: hashset } )
+    
   return 
-
-  # look for dupes in other folders
-  hashset_dict = dict()
-  for f1, d1 in target_dict.items():
-    hashset_dict[f1] = set( d1.values() )
-    if verbose > 1:
-      print( "Getting hashset for %s: %d" % ( f1, len( d1 ) ) )
-
-  allfolders = set( target_dict.keys() )
-  for f1, s1 in hashset_dict.items():
-    allfolders.remove( f1 )
-    if verbose > 1:
-      print( "Comparing %s: %d" % ( f1, len( s1 ) ) )
-    for f2 in allfolders:
-      s2 = hashset_dict[f2]
-      if verbose > 1:
-        print( "  with %s: %d" % ( f2, len( s2 ) ) )
-      dupes = s1.intersection( s2 )
-      n_dupes = len( dupes )
-      if n_dupes > 0 or verbose > 0:
-        print( "  %d files in %s are also in %s" % ( n_dupes, f1, f2 ) )
 
 
 
