@@ -141,10 +141,10 @@ def find_duplicates( target_folder, force_pickle = False, move = False, verbose 
         uniq_hash.update( { v } )
     if len( uniq_hash ) > 0:
       all_folders_hashset.update( { folder: uniq_hash } )
-    if verbose > 0 or len( dupl ) > 0:
-      print( "%d duplicates / %d total in %s" % ( len( dupl ), len( data ), folder ) )
-      if len( dupl ) > 0:
-        print( "\n".join( "  %d of type %s" % ( v2, k2 ) for ( k2, v2 ) in stats.items() ) )
+    if len( dupl ) > 0 or verbose > 1:
+      print( "%4d / %d in %s" % ( len( dupl ), len( data ), folder ) )
+      if verbose > 0:
+        print( "%s\n" % "\n".join( "\t\t%d of type %s" % ( v2, k2 ) for ( k2, v2 ) in stats.items() ) )
     if move:
       for h in dupl_hash:
         dupl_files = list( key for key, val in data.items() if val == h )
@@ -161,17 +161,23 @@ def find_duplicates( target_folder, force_pickle = False, move = False, verbose 
             print( "  %s -> %s/" % ( f, os.path.basename( dupl_folder ) ) )
           os.rename( f1, f2 )
   # look for duplicates in other folders
-  print( "Looking for duplicates across %d folders" % len( all_folders_hashset ) )
-  proc_folders_hashset = dict()
+  print( "--\nLooking for duplicates across %d folders" % len( all_folders_hashset ) )
   for folder, hashset in all_folders_hashset.items():
     dupl_info = list()
-    for folder2, hashset2 in proc_folders_hashset.items():
-      dupl_hashset = hashset.intersection( hashset2 )
-      if verbose > 0 or len( dupl_hashset ) > 0:
-        dupl_info.append( " %4d / %d from %s" % ( len( dupl_hashset ), len( hashset2 ), folder2 ) )
-    if len( dupl_info ): 
-      print( "%s contains (out of %d)\n%s" % ( folder, len( hashset ),  "\n".join( d for d in dupl_info ) ) )
-    proc_folders_hashset.update( { folder: hashset } )
+    uniq_hashset = set()
+    uniq_hashset.update( hashset )
+    for folder2, hashset2 in all_folders_hashset.items():
+      if folder != folder2:
+        uniq_hashset = uniq_hashset - hashset2
+        if verbose > 0:
+          dupl_hashset = hashset.intersection( hashset2 )
+          if verbose > 1 or len( dupl_hashset ) > 0:
+            dupl_info.append( "%4d / %d from %s" % ( len( dupl_hashset ), len( hashset2 ), folder2 ) )
+    total_dupe = len( hashset ) - len( uniq_hashset )
+    if total_dupe > 0: 
+      print( "%4d / %d in %s" % ( total_dupe, len( hashset ), folder ) )
+      if verbose > 0:
+        print( "%s\n" % "\n".join( "\t\t%s" % d for d in dupl_info ) )
     
   return 
 
